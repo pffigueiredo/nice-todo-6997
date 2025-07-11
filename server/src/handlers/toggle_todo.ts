@@ -1,16 +1,29 @@
 
+import { db } from '../db';
+import { todosTable } from '../db/schema';
 import { type ToggleTodoInput, type Todo } from '../schema';
+import { eq, sql } from 'drizzle-orm';
 
 export const toggleTodo = async (input: ToggleTodoInput): Promise<Todo> => {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is toggling the completion status of a todo item.
-  // It should find the todo by ID, flip its completed status, and update the updated_at timestamp.
-  return Promise.resolve({
-    id: input.id,
-    title: 'Placeholder title',
-    description: null,
-    completed: true, // Placeholder - should be flipped from current state
-    created_at: new Date(),
-    updated_at: new Date()
-  } as Todo);
+  try {
+    // Update the todo by flipping the completed status and updating the timestamp
+    const result = await db
+      .update(todosTable)
+      .set({
+        completed: sql`NOT ${todosTable.completed}`, // Flip the boolean value
+        updated_at: sql`NOW()` // Update timestamp
+      })
+      .where(eq(todosTable.id, input.id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Todo with id ${input.id} not found`);
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('Todo toggle failed:', error);
+    throw error;
+  }
 };
